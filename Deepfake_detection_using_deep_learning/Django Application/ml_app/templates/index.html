@@ -1,0 +1,225 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+
+<section class="hero-section">
+  <div class="container">
+    <div class="row align-items-center justify-content-center g-5">
+
+      <!-- ── Left: Hero copy ── -->
+      <div class="col-lg-5 text-center text-lg-start mb-4 mb-lg-0">
+        <div class="hero-badge">
+          <svg width="10" height="10" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4"/></svg>
+          AI-Powered Detection
+        </div>
+        <h1 class="hero-title">
+          Detect <span class="gradient-text">Deepfakes</span><br>
+          in Seconds
+        </h1>
+        <p class="hero-subtitle">
+          Upload a video or image and our multi-modal AI model — EfficientNet-B4 + DCT frequency analysis + Temporal Attention — will tell you if it's real or manipulated.
+        </p>
+
+        <!-- Feature pills -->
+        <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-lg-start">
+          <span style="background:rgba(108,99,255,0.12);border:1px solid rgba(108,99,255,0.25);border-radius:100px;padding:4px 12px;font-size:0.78rem;color:#a5b4fc;font-weight:600;">⚡ EfficientNet-B4</span>
+          <span style="background:rgba(108,99,255,0.12);border:1px solid rgba(108,99,255,0.25);border-radius:100px;padding:4px 12px;font-size:0.78rem;color:#a5b4fc;font-weight:600;">🔬 DCT Frequency</span>
+          <span style="background:rgba(108,99,255,0.12);border:1px solid rgba(108,99,255,0.25);border-radius:100px;padding:4px 12px;font-size:0.78rem;color:#a5b4fc;font-weight:600;">⏱ Temporal BiGRU</span>
+        </div>
+      </div>
+
+      <!-- ── Right: Upload card ── -->
+      <div class="col-lg-5">
+        <div class="glass-card">
+
+          <!-- Tabs: Video / Image -->
+          <div class="upload-tabs" id="upload-tabs">
+            <button class="upload-tab-btn active" data-tab="video" type="button" id="tab-video">
+              🎬 Video
+            </button>
+            <button class="upload-tab-btn" data-tab="image" type="button" id="tab-image">
+              🖼 Image
+            </button>
+          </div>
+
+          <!-- ─── VIDEO FORM ─── -->
+          <div id="panel-video">
+            <form method="POST" enctype="multipart/form-data" id="video-upload-form">
+              {% csrf_token %}
+              <input type="hidden" name="upload_type" value="video">
+              <input type="hidden" name="model_version" id="model-version-video" value="v2">
+
+              <!-- Drop zone -->
+              <div class="drop-zone" id="video-drop-zone">
+                <span class="drop-zone-icon">📹</span>
+                <p class="drop-zone-text">Drop your video here</p>
+                <p class="drop-zone-subtext">or click to browse — MP4, AVI, MKV, WebM, MOV (max 100 MB)</p>
+                {{ video_form.upload_video_file }}
+              </div>
+              <div class="file-selected-name" id="video-file-name"></div>
+
+              {% if video_form.upload_video_file.errors %}
+                {% for err in video_form.upload_video_file.errors %}
+                  <div class="alert-danger-custom">{{ err }}</div>
+                {% endfor %}
+              {% endif %}
+
+              <!-- Sequence length -->
+              <div style="margin:1.2rem 0;">
+                <div class="d-flex justify-content-between align-items-baseline mb-1">
+                  <span class="slider-label">Frames to Analyze</span>
+                  <span class="slider-value-display" id="slider-value">20</span>
+                </div>
+                <div id="slider"></div>
+                <input type="number" hidden id="{{ video_form.sequence_length.id_for_label }}"
+                       name="{{ video_form.sequence_length.name }}">
+              </div>
+
+              <!-- Model version -->
+              {% if has_v2 %}
+              <div style="margin-bottom:1.2rem;">
+                <span class="slider-label">Model Version</span>
+                <div class="model-version-group mt-2" id="mv-group-video">
+                  <div class="model-badge selected" data-version="v2" data-target="model-version-video">
+                    <span style="font-size:1.1rem;margin-bottom:2px;">🧠</span>
+                    V2 (EfficientNet)
+                  </div>
+                  <div class="model-badge" data-version="v1" data-target="model-version-video">
+                    <span style="font-size:1.1rem;margin-bottom:2px;">📦</span>
+                    V1 (ResNeXt)
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+
+              <!-- Submit -->
+              <button type="submit" class="btn-predict" id="video-submit-btn">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 3l14 9L5 21V3z"/></svg>
+                Analyze Video
+              </button>
+            </form>
+          </div>
+
+          <!-- ─── IMAGE FORM ─── -->
+          <div id="panel-image" style="display:none;">
+            <form method="POST" enctype="multipart/form-data" id="image-upload-form">
+              {% csrf_token %}
+              <input type="hidden" name="upload_type" value="image">
+              <input type="hidden" name="model_version" id="model-version-image" value="v2">
+
+              <!-- Drop zone -->
+              <div class="drop-zone" id="image-drop-zone">
+                <span class="drop-zone-icon">🖼</span>
+                <p class="drop-zone-text">Drop your image here</p>
+                <p class="drop-zone-subtext">or click to browse — JPG, PNG, WEBP, BMP</p>
+                {{ image_form.upload_image_file }}
+              </div>
+              <div class="file-selected-name" id="image-file-name"></div>
+
+              {% if image_form.upload_image_file.errors %}
+                {% for err in image_form.upload_image_file.errors %}
+                  <div class="alert-danger-custom">{{ err }}</div>
+                {% endfor %}
+              {% endif %}
+
+              <!-- Model version -->
+              {% if has_v2 %}
+              <div style="margin:1.2rem 0;">
+                <span class="slider-label">Model Version</span>
+                <div class="model-version-group mt-2" id="mv-group-image">
+                  <div class="model-badge selected" data-version="v2" data-target="model-version-image">
+                    <span style="font-size:1.1rem;margin-bottom:2px;">🧠</span>
+                    V2 (EfficientNet)
+                  </div>
+                  <div class="model-badge" data-version="v1" data-target="model-version-image">
+                    <span style="font-size:1.1rem;margin-bottom:2px;">📦</span>
+                    V1 (ResNeXt)
+                  </div>
+                </div>
+              </div>
+              {% endif %}
+
+              <!-- Submit -->
+              <button type="submit" class="btn-predict" id="image-submit-btn">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 3l14 9L5 21V3z"/></svg>
+                Analyze Image
+              </button>
+            </form>
+          </div>
+
+        </div><!-- /glass-card -->
+      </div>
+
+    </div>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block js_cripts %}
+<script src="{% static 'js/script.js' %}"></script>
+<script>
+$(function () {
+  // ── Sequence length slider ──
+  var sliderSteps = [10, 20, 40, 60, 80, 100];
+  function updateSlider(index) {
+    var v = sliderSteps[index];
+    $('#{{ video_form.sequence_length.id_for_label }}').val(v);
+    $('#slider-value').text(v);
+  }
+  $("#slider").slider({
+    value: 1,
+    min: 0,
+    max: sliderSteps.length - 1,
+    slide:  function (e, ui) { updateSlider(ui.value); },
+    change: function (e, ui) { updateSlider(ui.value); }
+  });
+  updateSlider($("#slider").slider("value"));
+
+  // ── Tab switching ──
+  $('.upload-tab-btn').on('click', function () {
+    var tab = $(this).data('tab');
+    $('.upload-tab-btn').removeClass('active');
+    $(this).addClass('active');
+    if (tab === 'video') {
+      $('#panel-video').show(); $('#panel-image').hide();
+    } else {
+      $('#panel-video').hide(); $('#panel-image').show();
+    }
+  });
+
+  // ── Drop zone file name display ──
+  function bindFileInput(inputId, nameId) {
+    $(inputId).on('change', function () {
+      var name = this.files[0] ? this.files[0].name : '';
+      if (name) {
+        $(nameId).text('📎 ' + name).show();
+      }
+    });
+  }
+  bindFileInput('#video-file-input', '#video-file-name');
+  bindFileInput('#image-file-input', '#image-file-name');
+
+  // Drag-over styling
+  $('.drop-zone').on('dragover dragenter', function () { $(this).addClass('drag-over'); })
+                 .on('dragleave drop',     function () { $(this).removeClass('drag-over'); });
+
+  // ── Model version badges ──
+  $('.model-badge').on('click', function () {
+    var targetInput = '#' + $(this).data('target');
+    var group = $(this).closest('.model-version-group');
+    group.find('.model-badge').removeClass('selected');
+    $(this).addClass('selected');
+    $(targetInput).val($(this).data('version'));
+  });
+
+  // ── Show loading overlay on submit ──
+  $('#video-upload-form, #image-upload-form').on('submit', function () {
+    var hasFile = $(this).find('input[type="file"]')[0].files.length > 0;
+    if (hasFile) {
+      $('#loading-overlay').addClass('active');
+    }
+  });
+});
+</script>
+{% endblock %}

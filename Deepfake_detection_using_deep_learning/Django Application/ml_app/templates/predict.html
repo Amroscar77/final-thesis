@@ -1,0 +1,286 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+
+<div class="container py-4">
+
+  <!-- Back button -->
+  <div class="mb-3">
+    <a href="{% url 'ml_app:home' %}" class="btn-back">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+      Back to Upload
+    </a>
+  </div>
+
+  {% if no_faces %}
+  <!-- ─── No Faces Found ─── -->
+  <div class="glass-card no-face-card">
+    <div class="no-face-icon">🙈</div>
+    <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;margin-bottom:0.5rem;">No Faces Detected</h2>
+    <p style="color:var(--clr-muted);max-width:420px;margin:0 auto 1.5rem;">
+      Our face detector couldn't find a human face in the uploaded {{ upload_type }}.
+      Please try another file with a clearly visible face.
+    </p>
+    <a href="{% url 'ml_app:home' %}" class="btn-predict" style="max-width:220px;margin:auto;display:flex;">
+      Try Another File
+    </a>
+  </div>
+
+  {% elif error %}
+  <!-- ─── Generic error ─── -->
+  <div class="glass-card no-face-card">
+    <div class="no-face-icon">⚠️</div>
+    <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:700;margin-bottom:0.5rem;">Something Went Wrong</h2>
+    <p style="color:var(--clr-muted);max-width:420px;margin:0 auto 1.5rem;">{{ error }}</p>
+    <a href="{% url 'ml_app:home' %}" class="btn-predict" style="max-width:220px;margin:auto;display:flex;">Go Back</a>
+  </div>
+
+  {% else %}
+
+  <div class="row g-4">
+
+    <!-- ═══ LEFT COLUMN: Verdict ═══ -->
+    <div class="col-lg-4">
+      <div class="glass-card h-100">
+        <p class="section-title">Detection Result</p>
+
+        <!-- Verdict -->
+        <div class="text-center my-3">
+          {% if output == "REAL" %}
+            <div class="verdict-badge real">
+              <span>✅</span> REAL
+            </div>
+          {% else %}
+            <div class="verdict-badge fake">
+              <span>🚨</span> FAKE
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Confidence meter -->
+        <div class="confidence-wrap">
+          <p class="confidence-label">Confidence Score</p>
+          <div class="confidence-number {% if output == 'REAL' %}text-success{% else %}text-danger{% endif %}">
+            {{ confidence }}%
+          </div>
+          <div class="confidence-bar-track mt-2">
+            <div class="confidence-bar-fill {% if output == 'REAL' %}real{% else %}fake{% endif %}"
+                 id="conf-bar" style="width: 0%;">
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-row mt-3">
+          <div class="stat-item">
+            <div class="stat-value">{{ model_version }}</div>
+            <div class="stat-label">Model</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">{{ elapsed_time }}s</div>
+            <div class="stat-label">Elapsed</div>
+          </div>
+          {% if upload_type == "video" %}
+          <div class="stat-item">
+            <div class="stat-value">{{ analyzed_frames }}</div>
+            <div class="stat-label">Analyzed</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">{{ faces_found }}</div>
+            <div class="stat-label">Faces</div>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Low confidence warning -->
+        {% if confidence < 70 %}
+        <div style="margin-top:1rem;padding:0.75rem 0.9rem;background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.35);border-radius:var(--radius-md);font-size:0.8rem;color:#f0c040;line-height:1.6;">
+          ⚠️ <strong>Low confidence ({{ confidence }}%)</strong> — the model is uncertain. This result may not be reliable. Try uploading with <strong>more frames (60–100)</strong> for a stronger verdict.
+        </div>
+        {% endif %}
+
+        <!-- Explanation blurb -->
+        <div style="margin-top:1rem;padding:0.9rem;background:rgba(255,255,255,0.03);border:1px solid var(--clr-card-border);border-radius:var(--radius-md);font-size:0.8rem;color:var(--clr-muted);line-height:1.6;">
+          {% if output == "REAL" %}
+            🟢 The AI did <strong style="color:var(--clr-real);">not detect</strong> signs of digital manipulation in this media. Facial features, temporal consistency, and frequency artifacts all appear authentic.
+          {% else %}
+            🔴 The AI detected <strong style="color:var(--clr-fake);">inconsistencies</strong> typical of synthetic face generation — abnormal frequency artifacts or temporal flickering across frames.
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ RIGHT COLUMN: Media & Frames ═══ -->
+    <div class="col-lg-8">
+
+      {% if upload_type == "video" %}
+      <!-- ─ Video Player ─ -->
+      <div class="glass-card mb-4">
+        <p class="section-title">Original Video</p>
+        <div class="video-player-wrap mt-2">
+          <video id="predict-media" controls preload="metadata">
+            <source src="{{ MEDIA_URL }}{{ original_video }}" type="video/mp4" />
+          </video>
+          <canvas id="overlay-canvas" style="position:absolute;top:0;left:0;pointer-events:none;"></canvas>
+        </div>
+      </div>
+
+      <!-- ─ Extracted frames ─ -->
+      <div class="glass-card mb-4">
+        <p class="section-title">Extracted Frames ({{ preprocessed_images|length }})</p>
+        <div id="preprocessed_images">
+          {% for img in preprocessed_images %}
+          <div class="preprocess">
+            <img src="{% static img %}" height="170" alt="frame">
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- ─ Face crops ─ -->
+      <div class="glass-card mb-4">
+        <p class="section-title">Cropped Faces ({{ faces_cropped_images|length }})</p>
+        <div id="faces_images">
+          {% for img in faces_cropped_images %}
+          <div class="faces">
+            <img src="{% static img %}" height="110" alt="face">
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      {% if attention_weights and attention_weights != "[]" %}
+      <!-- ─ Temporal Attention ─ -->
+      <div class="glass-card">
+        <p class="section-title">Temporal Attention Weights</p>
+        <p style="font-size:0.8rem;color:var(--clr-muted);margin-bottom:0.8rem;">
+          Which frames the model focused on most when making its decision.
+        </p>
+        <div class="attn-chart-wrap">
+          <canvas id="attn-chart" height="90"></canvas>
+        </div>
+      </div>
+      {% endif %}
+
+      {% elif upload_type == "image" %}
+      <!-- ─ Image result ─ -->
+      <div class="glass-card mb-4">
+        <p class="section-title">Original Image</p>
+        <div class="mt-2" style="text-align:center;">
+          <img src="{% static original_image %}" alt="Original"
+               style="max-width:100%;max-height:360px;border-radius:var(--radius-md);border:1px solid var(--clr-card-border);">
+        </div>
+      </div>
+      <div class="glass-card">
+        <p class="section-title">Detected Face</p>
+        <div class="mt-2" style="text-align:center;">
+          <img src="{% static face_image %}" alt="Face crop"
+               style="max-width:300px;border-radius:var(--radius-md);border:1px solid var(--clr-card-border);">
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block js_cripts %}
+<script src="{% static 'js/face-api.min.js' %}"></script>
+<script>
+$(document).ready(function () {
+
+  // ── Animate confidence bar ──
+  var conf = parseFloat("{{ confidence }}") || 0;
+  setTimeout(function () {
+    $('#conf-bar').css('width', conf + '%');
+  }, 300);
+
+  // ── Face-API overlay on video ──
+  var video = document.getElementById("predict-media");
+  if (video) {
+    Promise.all([
+      faceapi.nets.ssdMobilenetv1.loadFromUri('/static/json'),
+      faceapi.nets.tinyFaceDetector.loadFromUri('/static/json')
+    ]);
+
+    var detectionInterval;
+    video.addEventListener("playing", function () {
+      var canvas = document.getElementById('overlay-canvas');
+      var displaySize = { width: video.offsetWidth, height: video.offsetHeight };
+      canvas.width  = displaySize.width;
+      canvas.height = displaySize.height;
+      faceapi.matchDimensions(canvas, displaySize);
+
+      detectionInterval = setInterval(async function () {
+        var detections = await faceapi.detectAllFaces(video);
+        var resized = faceapi.resizeResults(detections, displaySize);
+        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+        resized.forEach(function (det, i) {
+          var result   = '{{ output }}';
+          var conf_str = '{{ confidence }}';
+          var color    = result === 'REAL' ? '#22c55e' : '#ef4444';
+          var drawOpts = { label: result + ' ' + conf_str + '%', boxColor: color, lineWidth: 2 };
+          var box = { x: resized[i].box.x, y: resized[i].box.y,
+                      width: resized[i].box.width, height: resized[i].box.height };
+          var drawBox = new faceapi.draw.DrawBox(box, drawOpts);
+          drawBox.draw(canvas);
+        });
+      }, 100);
+    });
+
+    video.addEventListener("paused",  function () { clearInterval(detectionInterval); });
+    video.addEventListener("ended",   function () { clearInterval(detectionInterval); });
+  }
+
+  // ── Temporal Attention chart (Chart.js via CDN if available) ──
+  var attnRaw = '{{ attention_weights|escapejs }}';
+  if (attnRaw && attnRaw !== '[]') {
+    try {
+      var attnData = JSON.parse(attnRaw);
+      var ctx = document.getElementById('attn-chart');
+      if (ctx && typeof Chart !== 'undefined') {
+        new Chart(ctx.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: attnData.map((_, i) => 'F' + (i + 1)),
+            datasets: [{
+              data: attnData,
+              backgroundColor: attnData.map(function (v) {
+                var intensity = Math.min(1, v * 6);
+                return 'rgba(108,99,255,' + (0.25 + intensity * 0.65) + ')';
+              }),
+              borderColor: 'rgba(108,99,255,0.6)',
+              borderWidth: 1,
+              borderRadius: 4,
+            }]
+          },
+          options: {
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { ticks: { color: '#8892a4', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+              y: { ticks: { color: '#8892a4', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+            }
+          }
+        });
+      } else if (ctx && attnData.length) {
+        // Fallback: simple bar chart with divs
+        var wrap = ctx.parentElement;
+        ctx.remove();
+        var html = '<div style="display:flex;align-items:flex-end;gap:3px;height:80px;">';
+        var maxVal = Math.max.apply(null, attnData);
+        attnData.forEach(function (v) {
+          var h = Math.round((v / maxVal) * 75);
+          html += '<div style="flex:1;height:' + h + 'px;background:rgba(108,99,255,0.6);border-radius:3px 3px 0 0;min-width:4px;"></div>';
+        });
+        wrap.innerHTML = html + '</div>';
+      }
+    } catch (e) { console.warn('Attention chart error:', e); }
+  }
+});
+</script>
+<!-- Chart.js CDN for attention visualization -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+{% endblock %}

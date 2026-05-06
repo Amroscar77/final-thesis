@@ -1,0 +1,38 @@
+# Model weights (too large for GitHub — store on Google Drive / HuggingFace)
+*.pt
+*.pth
+*.ckpt
+
+# User uploaded files
+Deepfake_detection_using_deep_learning/Django Application/uploaded_videos/
+Deepfake_detection_using_deep_learning/Django Application/uploaded_images/
+
+# Training data
+training_data/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Django
+*.log
+db.sqlite3
+local_settings.py
+
+# Virtual environments
+venv/
+env/
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Training output images
+image_training_curves.png

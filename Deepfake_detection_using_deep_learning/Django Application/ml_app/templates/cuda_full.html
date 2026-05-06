@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<div class="container py-5">
+  <div class="glass-card" style="max-width:580px;margin:4rem auto;text-align:center;padding:3rem 2.5rem;">
+
+    <!-- Icon -->
+    <div style="font-size:4rem;margin-bottom:1rem;animation:pulse-icon 2s ease-in-out infinite;">⚡</div>
+
+    <!-- Title -->
+    <h1 style="font-family:'Space Grotesk',sans-serif;font-size:1.8rem;font-weight:700;letter-spacing:-0.5px;margin-bottom:0.6rem;">
+      GPU Memory Exhausted
+    </h1>
+
+    <!-- Subtitle -->
+    <p style="color:var(--clr-muted);font-size:0.95rem;max-width:400px;margin:0 auto 2rem;line-height:1.7;">
+      The server ran out of GPU (VRAM) memory while processing your file.
+      This typically happens with long videos or when the GPU is already in use.
+    </p>
+
+    <!-- Tips card -->
+    <div style="background:rgba(255,179,0,0.07);border:1px solid rgba(255,179,0,0.2);border-radius:var(--radius-md);padding:1.2rem 1.5rem;text-align:left;margin-bottom:2rem;">
+      <p style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:#fbbf24;margin-bottom:0.7rem;">💡 Try these fixes</p>
+      <ul style="color:var(--clr-muted);font-size:0.85rem;line-height:1.8;margin:0;padding-left:1.2rem;">
+        <li>Use <strong style="color:var(--clr-text);">fewer frames</strong> — reduce the slider to 10 or 20</li>
+        <li>Switch to <strong style="color:var(--clr-text);">V1 (ResNeXt)</strong> model which uses less memory</li>
+        <li>Upload a <strong style="color:var(--clr-text);">shorter video or smaller image</strong></li>
+        <li>Wait a moment and try again if GPU is busy</li>
+      </ul>
+    </div>
+
+    <!-- Back button -->
+    <a href="{% url 'ml_app:home' %}" class="btn-predict" style="max-width:240px;margin:auto;display:flex;text-decoration:none;">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+      Try Again
+    </a>
+
+  </div>
+</div>
+
+<style>
+@keyframes pulse-icon {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.12); }
+}
+</style>
+{% endblock %}
