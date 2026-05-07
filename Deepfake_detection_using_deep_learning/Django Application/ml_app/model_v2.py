@@ -1,5 +1,5 @@
 """
-Deepfake Detection Model V2 — Modern Architecture (2025/2026)
+Deepfake Detection Model V2
 
 Architecture:
     - EfficientNet-B4 spatial backbone (pretrained on ImageNet)
@@ -7,13 +7,6 @@ Architecture:
     - Feature fusion (spatial + frequency)
     - Bidirectional GRU with temporal attention
     - Binary classification head (REAL / FAKE)
-
-Improvements over V1 (ResNeXt-50 + LSTM):
-    - 300x300 input (vs 112x112) — catches finer artifacts
-    - Frequency analysis detects GAN/diffusion spectral fingerprints
-    - BiGRU captures both forward & backward temporal patterns
-    - Attention mechanism highlights most suspicious frames
-    - Grad-CAM compatible for explainability
 """
 
 import torch
@@ -44,11 +37,6 @@ STD_V2 = [0.229, 0.224, 0.225]
 # Frequency Analysis Branch (DCT)
 # ─────────────────────────────────────────────
 class DCTFrequencyBranch(nn.Module):
-    """
-    Extracts frequency-domain features using DCT (Discrete Cosine Transform).
-    GAN-generated faces leave distinctive spectral fingerprints that are
-    invisible in pixel space but obvious in the frequency domain.
-    """
 
     def __init__(self, out_features=256):
         super().__init__()
@@ -104,10 +92,6 @@ class DCTFrequencyBranch(nn.Module):
 # Temporal Attention Module
 # ─────────────────────────────────────────────
 class TemporalAttention(nn.Module):
-    """
-    Learns which frames in a video sequence are most important for
-    the real/fake decision. Suspicious frames get higher weights.
-    """
 
     def __init__(self, hidden_dim):
         super().__init__()
@@ -135,13 +119,6 @@ class TemporalAttention(nn.Module):
 # Main Model: DeepfakeDetectorV2
 # ─────────────────────────────────────────────
 class DeepfakeDetectorV2(nn.Module):
-    """
-    Modern deepfake detection model combining:
-    1. EfficientNet-B4 for spatial feature extraction
-    2. DCT frequency analysis for spectral artifact detection
-    3. Bidirectional GRU for temporal modeling
-    4. Temporal attention for frame importance weighting
-    """
 
     def __init__(
         self,

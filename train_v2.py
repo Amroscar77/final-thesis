@@ -1,14 +1,5 @@
 """
-Deepfake Detection V2 — Training Script for Google Colab
-=========================================================
-Dataset: DFDC (Deepfake Detection Challenge)
-GPU: Google Colab (T4/V100/A100)
-
-Usage in Colab:
-    1. Upload this file to Colab
-    2. Mount Google Drive with DFDC dataset
-    3. Run: !python train_v2.py --data_dir /content/drive/MyDrive/dfdc --epochs 30
-
+Deepfake Detection V2 — Training Script
 Architecture: EfficientNet-B4 + DCT + BiGRU + Temporal Attention
 """
 
@@ -51,7 +42,7 @@ except ImportError:
 
 
 # ═══════════════════════════════════════════════
-# Model Architecture (same as model_v2.py)
+# Model Architecture
 # ═══════════════════════════════════════════════
 
 class DCTFrequencyBranch(nn.Module):
@@ -436,14 +427,14 @@ def main():
     face_extractor = FaceExtractor(device=str(device), face_size=300)
 
     # ── Datasets ──
-    print("\n📦 Loading training data...")
+    print("\n[INFO] Loading training data...")
     train_dataset = DFDCDataset(
         args.data_dir, sequence_length=args.seq_length,
         transform=train_transform, max_videos=args.max_videos,
         face_extractor=face_extractor, split='train',
     )
 
-    print("\n📦 Loading validation data...")
+    print("\n[INFO] Loading validation data...")
     val_dataset = DFDCDataset(
         args.data_dir, sequence_length=args.seq_length,
         transform=val_transform, max_videos=args.max_videos,
@@ -460,29 +451,27 @@ def main():
     )
 
     # ── Model ──
-    print("\n🧠 Initializing model...")
+    print("\n[INFO] Initializing model...")
     model = DeepfakeDetectorV2(num_classes=2)
 
     if args.freeze_backbone:
-        print("  ❄️ Freezing EfficientNet backbone")
+        print("  [INFO] Freezing EfficientNet backbone")
         for param in model.spatial_backbone.parameters():
             param.requires_grad = False
 
     if args.resume:
-        print(f"  📂 Resuming from {args.resume}")
+        print(f"  [INFO] Resuming from {args.resume}")
         model.load_state_dict(torch.load(args.resume, map_location=device))
 
     model = model.to(device)
 
-    # Count parameters
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"  Total params: {total_params:,}")
     print(f"  Trainable params: {trainable_params:,}")
 
-    # ── Training Setup ──
     criterion = nn.CrossEntropyLoss(
-        weight=torch.tensor([1.0, 1.5]).to(device)  # Slightly favor REAL detection
+        weight=torch.tensor([1.0, 1.5]).to(device)
     )
     optimizer = torch.optim.AdamW(
         filter(lambda p: p.requires_grad, model.parameters()),
@@ -493,12 +482,11 @@ def main():
     )
     scaler = GradScaler()
 
-    # ── Training Loop ──
     best_val_acc = 0
     patience = 7
     patience_counter = 0
 
-    print(f"\n🚀 Starting training for {args.epochs} epochs...")
+    print(f"\n[INFO] Starting training for {args.epochs} epochs...")
     print("=" * 60)
 
     for epoch in range(args.epochs):
@@ -519,7 +507,6 @@ def main():
         print(f"  Val   Loss: {val_loss:.4f} | Val   Acc: {val_acc:.4f}")
         print(f"  Time: {elapsed:.1f}s")
 
-        # Save best model
         if val_acc > best_val_acc:
             best_val_acc = val_acc
             patience_counter = 0
@@ -527,14 +514,13 @@ def main():
             save_name = f"model_{acc_str}_acc_{args.seq_length}_frames_v2_effnet_gru.pt"
             save_path = os.path.join(args.output_dir, save_name)
             torch.save(model.state_dict(), save_path)
-            print(f"  ✅ Saved best model: {save_name}")
+            print(f"  [SAVED] {save_name}")
         else:
             patience_counter += 1
             if patience_counter >= patience:
-                print(f"\n⏹️ Early stopping at epoch {epoch+1} (no improvement for {patience} epochs)")
+                print(f"\n[INFO] Early stopping at epoch {epoch+1}")
                 break
 
-        # Save checkpoint every 5 epochs
         if (epoch + 1) % 5 == 0:
             ckpt_path = os.path.join(args.output_dir, f"checkpoint_epoch_{epoch+1}.pt")
             torch.save({
@@ -544,11 +530,11 @@ def main():
                 'scheduler_state_dict': scheduler.state_dict(),
                 'best_val_acc': best_val_acc,
             }, ckpt_path)
-            print(f"  💾 Checkpoint saved: checkpoint_epoch_{epoch+1}.pt")
+            print(f"  [CKPT] checkpoint_epoch_{epoch+1}.pt")
 
     print("\n" + "=" * 60)
-    print(f"🏆 Training complete! Best validation accuracy: {best_val_acc:.4f}")
-    print(f"📁 Models saved in: {args.output_dir}")
+    print(f"[INFO] Training complete. Best val accuracy: {best_val_acc:.4f}")
+    print(f"[INFO] Models saved in: {args.output_dir}")
 
 
 if __name__ == '__main__':

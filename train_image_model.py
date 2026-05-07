@@ -1,35 +1,11 @@
 """
 Image-Only Deepfake Detection — Training Script
-================================================
 Trains a CNN (ResNeXt-50 or EfficientNet-B4) on still images.
-No LSTM — pure spatial classification.
 
-Dataset layout (pick one):
-  A) Folder structure
-        data/
-        ├── real/   ← real face images (.jpg/.png/...)
-        └── fake/   ← fake/deepfake images
-
-  B) CSV file with two columns:
-        path,label
-        /path/to/img.jpg,REAL
-        /path/to/img2.jpg,FAKE
-
-Usage examples:
-  # folder mode
-  python train_image_model.py --data_dir ./my_dataset
-
-  # CSV mode
+Usage:
+  python train_image_model.py --data_dir ./data
   python train_image_model.py --csv ./labels.csv
-
-  # EfficientNet-B4, 30 epochs, 300px images
-  python train_image_model.py --data_dir ./data --model efficientnet --epochs 30 --img_size 300
-
-  # freeze backbone (fast, trains only the head)
-  python train_image_model.py --data_dir ./data --freeze --epochs 10
-
-Saved model will be placed in:
-  Django Application/models/model_{acc}_acc_image_{backbone}_data.pt
+  python train_image_model.py --data_dir ./data --model efficientnet --epochs 30
 """
 
 import os
